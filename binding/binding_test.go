@@ -37,6 +37,10 @@ type QueryTest struct {
 type FooStruct struct {
 	Foo string `msgpack:"foo" json:"foo" form:"foo" xml:"foo" binding:"required"`
 }
+type FooBarIntStruct struct {
+	Foo *int   `form:"foo" json:"foo"`
+	Bar string `msgpack:"bar" form:"bar" json:"bar"`
+}
 
 type FooBarStruct struct {
 	FooStruct
@@ -213,6 +217,35 @@ func TestBindingForm(t *testing.T) {
 		"foo=bar&bar=foo", "bar2=foo")
 }
 
+func TestBindingForIntNonePost(t *testing.T) {
+
+	// var pnt *int
+	// fmt.Printf("%+v\n", pnt)
+
+	testFormBindingForIntNone(t, "POST",
+		"/?bar=foo", "/?bar2=foo",
+		"", "")
+}
+func TestBindingForIntNone(t *testing.T) {
+
+	// var pnt *int
+	// fmt.Printf("%+v\n", pnt)
+
+	testFormBindingForIntNone(t, "GET",
+		"/?bar=foo", "/?bar2=foo",
+		"", "")
+}
+func TestBindingFormIntPost(t *testing.T) {
+	testFormBindingForInt(t, "GET",
+		"/?foo=0&bar=foo", "/?ba2r2=foo",
+		"", "")
+}
+func TestBindingFormInt(t *testing.T) {
+
+	testFormBindingForInt(t, "GET",
+		"/?foo=&bar=foo", "/?bar2=foo",
+		"", "")
+}
 func TestBindingForm2(t *testing.T) {
 	testFormBinding(t, "GET",
 		"/?foo=bar&bar=foo", "/?bar2=foo",
@@ -821,6 +854,47 @@ func testFormBindingEmbeddedStruct(t *testing.T, method, path, badPath, body, ba
 
 }
 
+func testFormBindingForIntNone(t *testing.T, method, path, badPath, body, badBody string) {
+	b := Form
+	assert.Equal(t, "form", b.Name())
+
+	obj := FooBarIntStruct{}
+	req := requestWithBody(method, path, body)
+	if method == "POST" {
+		req.Header.Add("Content-Type", MIMEPOSTForm)
+	}
+	err := b.Bind(req, &obj)
+	assert.NoError(t, err)
+	assert.Equal(t, true, obj.Foo == nil)
+	assert.Equal(t, "foo", obj.Bar)
+
+	obj = FooBarIntStruct{}
+	req = requestWithBody(method, badPath, badBody)
+	err = JSON.Bind(req, &obj)
+	assert.Error(t, err)
+}
+func testFormBindingForInt(t *testing.T, method, path, badPath, body, badBody string) {
+	b := Form
+	assert.Equal(t, "form", b.Name())
+
+	obj := FooBarIntStruct{}
+	req := requestWithBody(method, path, body)
+	if method == "POST" {
+		req.Header.Add("Content-Type", MIMEPOSTForm)
+	}
+	err := b.Bind(req, &obj)
+	assert.NoError(t, err)
+	assert.Equal(t, true, obj.Foo != nil)
+	// assert.Equal(t, 0, obj.Foo) Never!
+	// 当有设置 foo= 才成立
+	assert.Equal(t, true, 0 == *obj.Foo)
+	assert.Equal(t, "foo", obj.Bar)
+
+	obj = FooBarIntStruct{}
+	req = requestWithBody(method, badPath, badBody)
+	err = JSON.Bind(req, &obj)
+	assert.Error(t, err)
+}
 func testFormBinding(t *testing.T, method, path, badPath, body, badBody string) {
 	b := Form
 	assert.Equal(t, "form", b.Name())
